@@ -1,0 +1,10 @@
+apiVersion: storage.infra.net/v1alpha1
+kind: CephVolume
+metadata:
+  name: database-volume
+  namespace: default
+spec:
+  pool: lab-pool
+  size: 10Gi
+  deletionPolicy: Retain
+

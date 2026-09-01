@@ -1,0 +1,29 @@
+# This rule is not used by the project cephbridge itself.
+# It is provided to allow the cluster admin to help manage permissions for users.
+#
+# Grants read-only access to storage.infra.net resources.
+# This role is intended for users who need visibility into these resources
+# without permissions to modify them. It is ideal for monitoring purposes and limited-access viewing.
+
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  labels:
+    app.kubernetes.io/name: cephbridge
+    app.kubernetes.io/managed-by: kustomize
+  name: cephvolume-viewer-role
+rules:
+- apiGroups:
+  - storage.infra.net
+  resources:
+  - cephvolumes
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - storage.infra.net
+  resources:
+  - cephvolumes/status
+  verbs:
+  - get
