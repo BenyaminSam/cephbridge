@@ -4,20 +4,19 @@ kind: CustomResourceDefinition
 metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.21.0
-  name: cephvolumes.storage.infra.net
+  name: cephvolumesnapshots.storage.infra.net
 spec:
   group: storage.infra.net
   names:
-    kind: CephVolume
-    listKind: CephVolumeList
-    plural: cephvolumes
-    singular: cephvolume
+    kind: CephVolumeSnapshot
+    listKind: CephVolumeSnapshotList
+    plural: cephvolumesnapshots
+    singular: cephvolumesnapshot
   scope: Namespaced
   versions:
   - name: v1alpha1
     schema:
       openAPIV3Schema:
-        description: CephVolume is the Schema for the cephvolumes API
         properties:
           apiVersion:
             description: |-
@@ -37,41 +36,20 @@ spec:
           metadata:
             type: object
           spec:
-            description: spec defines the desired state of CephVolume
             properties:
               deletionPolicy:
                 default: Delete
+                enum:
+                - Delete
+                - Retain
                 type: string
-              features:
-                items:
-                  type: string
-                type: array
-              pool:
+              volumeName:
                 minLength: 1
                 type: string
-              size:
-                anyOf:
-                - type: integer
-                - type: string
-                pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
-                x-kubernetes-int-or-string: true
-              source:
-                properties:
-                  snapshot:
-                    properties:
-                      name:
-                        minLength: 1
-                        type: string
-                    required:
-                    - name
-                    type: object
-                type: object
             required:
-            - pool
-            - size
+            - volumeName
             type: object
           status:
-            description: status defines the observed state of CephVolume
             properties:
               conditions:
                 items:
@@ -132,8 +110,6 @@ spec:
                 x-kubernetes-list-map-keys:
                 - type
                 x-kubernetes-list-type: map
-              imageName:
-                type: string
               message:
                 type: string
               observedGeneration:
@@ -141,15 +117,13 @@ spec:
                 type: integer
               phase:
                 type: string
-              pool:
+              readyToUse:
+                type: boolean
+              snapshotHandle:
                 type: string
-              pvName:
+              volumeSnapshotContentName:
                 type: string
-              pvcName:
-                type: string
-              size:
-                type: string
-              volumeHandle:
+              volumeSnapshotname:
                 type: string
             type: object
         required:

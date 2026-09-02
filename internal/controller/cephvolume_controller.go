@@ -241,6 +241,16 @@ func (r *CephVolumeReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 			},
 		}
 
+		if cephVolume.Spec.Source != nil && cephVolume.Spec.Source.Snapshot != nil {
+			pvc.Spec.DataSource = &corev1.TypedLocalObjectReference{
+				APIGroup: ptr("snapshot.storage.k8s.io"),
+				Kind:     "VolumeSnapshot",
+				Name:     cephVolume.Spec.Source.Snapshot.Name,
+			}
+
+			log.Info("Creating PVC from VolumeSnapshot", "pvc", cephVolume.Name, "snapshot", cephVolume.Spec.Source.Snapshot.Name)
+		}
+
 		if err := ctrl.SetControllerReference(
 			&cephVolume,
 			&pvc,

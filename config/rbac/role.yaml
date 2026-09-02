@@ -27,9 +27,38 @@ rules:
   - update
   - watch
 - apiGroups:
+  - snapshot.storage.k8s.io
+  resources:
+  - volumesnapshotcontents
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - snapshot.storage.k8s.io
+  resources:
+  - volumesnapshots
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - snapshot.storage.k8s.io
+  resources:
+  - volumesnapshots/status
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
   - storage.infra.net
   resources:
   - cephvolumes
+  - cephvolumesnapshots
   verbs:
   - create
   - delete
@@ -42,12 +71,14 @@ rules:
   - storage.infra.net
   resources:
   - cephvolumes/finalizers
+  - cephvolumesnapshots/finalizers
   verbs:
   - update
 - apiGroups:
   - storage.infra.net
   resources:
   - cephvolumes/status
+  - cephvolumesnapshots/status
   verbs:
   - get
   - patch

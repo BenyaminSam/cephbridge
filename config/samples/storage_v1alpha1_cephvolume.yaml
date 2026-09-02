@@ -6,5 +6,5 @@ metadata:
 spec:
   pool: lab-pool
   size: 10Gi
-  deletionPolicy: Retain
+  deletionPolicy: Delete
 

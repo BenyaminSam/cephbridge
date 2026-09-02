@@ -3,6 +3,7 @@
 # It should be run by config/default
 resources:
 - bases/storage.infra.net_cephvolumes.yaml
+- bases/storage.infra.net_cephvolumesnapshots.yaml
 # +kubebuilder:scaffold:crdkustomizeresource
 
 patches:

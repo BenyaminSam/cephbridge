@@ -18,4 +18,13 @@ resources:
   kind: CephVolume
   path: github.com/BenyaminSam/cephbridge/api/v1alpha1
   version: v1alpha1
+- api:
+    crdVersion: v1
+    namespaced: true
+  controller: true
+  domain: infra.net
+  group: storage
+  kind: CephVolumeSnapshot
+  path: github.com/BenyaminSam/cephbridge/api/v1alpha1
+  version: v1alpha1
 version: "3"

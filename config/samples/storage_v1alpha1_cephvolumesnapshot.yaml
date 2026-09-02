@@ -1,0 +1,7 @@
+apiVersion: storage.infra.net/v1alpha1
+kind: CephVolumeSnapshot
+metadata:
+  name: database-volume-snapshot
+  namespace: default
+spec:
+  volumeName: database-volume
