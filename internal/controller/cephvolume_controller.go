@@ -1,24 +1,8 @@
-/*
-Copyright 2026.
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-    http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-*/
-
 package controller
 
 import (
 	"context"
-	"reflect"
+	// "reflect"
 
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -38,10 +22,11 @@ import (
 )
 
 const (
-	cephVolumePhasePending  = "Pending"
-	cephVolumePhaseCreating = "Creating"
-	cephVolumePhaseReady    = "Ready"
-	cephVolumePhaseFailed   = "Failed"
+	cephVolumePhasePending   = "Pending"
+	cephVolumePhaseCreating  = "Creating"
+	cephVolumePhaseExpanding = "Expanding"
+	cephVolumePhaseReady     = "Ready"
+	cephVolumePhaseFailed    = "Failed"
 
 	cephVolumeConditionReady = "Ready"
 
@@ -280,6 +265,26 @@ func (r *CephVolumeReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 		)
 	}
 
+	requestedSize := cephVolume.Spec.Size
+	currentRequestedSize := pvc.Spec.Resources.Requests[corev1.ResourceStorage]
+
+	if requestedSize.Cmp(currentRequestedSize) > 0 {
+		log.Info("Expanding PVC", "pvc", pvc.Name, "from", currentRequestedSize.String(), "to", requestedSize.String())
+		pvc.Spec.Resources.Requests[corev1.ResourceStorage] = requestedSize
+
+		if err := r.Update(ctx, &pvc); err != nil {
+			return ctrl.Result{}, err
+		}
+		return r.updateStatus(ctx, &cephVolume, cephVolumePhaseExpanding, "PVC expansion requested, waiting for Ceph CSI")
+	}
+
+	actualCapacity := pvc.Status.Capacity[corev1.ResourceStorage]
+
+	if actualCapacity.Cmp(requestedSize) < 0 {
+		log.Info("Waiting for PVC expansion", "pvc", pvc.Name, "requested", requestedSize.String(), "actual", actualCapacity.String())
+		return r.updateStatus(ctx, &cephVolume, cephVolumePhaseExpanding, "Waiting for Ceph CSI to complete volume expansion")
+	}
+
 	switch pvc.Status.Phase {
 	case corev1.ClaimPending:
 		return r.updateStatus(
@@ -383,6 +388,14 @@ func (r *CephVolumeReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 		cephVolume.Status.VolumeHandle = pv.Spec.CSI.VolumeHandle
 		cephVolume.Status.ImageName = imageName
 		cephVolume.Status.Pool = pool
+
+		requested := pvc.Spec.Resources.Requests[corev1.ResourceStorage]
+		actual := pvc.Status.Capacity[corev1.ResourceStorage]
+
+		log.Info("PVC capacity observed", "pvc", pvc.Name, "requested", requested.String(), "actual", actual.String())
+
+		cephVolume.Status.Size = actual.String()
+
 		cephVolume.Status.Size = pvc.Status.Capacity.Storage().String()
 		cephVolume.Status.ObservedGeneration = cephVolume.Generation
 
@@ -406,11 +419,9 @@ func (r *CephVolumeReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 }
 
 func (r *CephVolumeReconciler) updateStatus(ctx context.Context, cephVolume *storagev1alpha1.CephVolume, phase string, message string) (ctrl.Result, error) {
-	cephVolume.Status.Phase = phase
-	cephVolume.Status.Message = message
-	cephVolume.Status.ObservedGeneration = cephVolume.Generation
+	log := logf.FromContext(ctx)
 
-	oldStatus := cephVolume.Status.DeepCopy()
+	// oldStatus := cephVolume.Status.DeepCopy()
 
 	cephVolume.Status.Phase = phase
 	cephVolume.Status.Message = message
@@ -423,6 +434,9 @@ func (r *CephVolumeReconciler) updateStatus(ctx context.Context, cephVolume *sto
 	case cephVolumePhaseReady:
 		readyStatus = metav1.ConditionTrue
 		reason = reasonVolumeReady
+	case cephVolumePhaseExpanding:
+		readyStatus = metav1.ConditionFalse
+		reason = reasonProvisioning
 
 	case cephVolumePhaseFailed:
 		readyStatus = metav1.ConditionFalse
@@ -444,13 +458,17 @@ func (r *CephVolumeReconciler) updateStatus(ctx context.Context, cephVolume *sto
 		},
 	)
 
-	if reflect.DeepEqual(oldStatus, &cephVolume.Status) {
-		return ctrl.Result{}, nil
-	}
+	// if reflect.DeepEqual(oldStatus, &cephVolume.Status) {
+	// 	return ctrl.Result{}, nil
+	// }
 
 	if err := r.Status().Update(ctx, cephVolume); err != nil {
+		log.Error(err, "Failede to update CephVolume status")
 		return ctrl.Result{}, err
 	}
+
+	log.Info("CephVolume status updated", "size", cephVolume.Status.Size, "phase", cephVolume.Status.Phase)
+
 	return ctrl.Result{}, nil
 }
 
